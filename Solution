@@ -1,1 +1,94 @@
+Sub GenerateCategoryWorkbooks()
+    Dim ws As Worksheet, wbSource As Workbook, wbNew As Workbook
+    Dim rng As Range, lastRow As Long, lastCol As Long
+    Dim dataFile As String, macroPath As String
+    Dim dictCategory As Object, dictProduct As Object
+    Dim category As String, productCode As String
+    Dim cell As Range
+    
+    ' Disable screen updating for better performance
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    
+    ' Let the user select the sales data file
+    dataFile = Application.GetOpenFilename(FileFilter:="Excel Files (*.xls; *.xlsx; *.xlsm), *.xls; *.xlsx; *.xlsm", Title:="Select Sales Data File")
+    
+    ' Exit if no file is selected
+    If dataFile = "False" Then Exit Sub
+    
+    ' Open the selected workbook
+    Set wbSource = Workbooks.Open(dataFile)
+    Set ws = wbSource.Sheets(1) ' Assuming data is in the first sheet
+    
+    ' Find last row and column
+    lastRow = ws.Cells(Rows.Count, 1).End(xlUp).Row
+    lastCol = ws.Cells(1, Columns.Count).End(xlToLeft).Column
+    
+    ' Set range of data
+    Set rng = ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol))
+    
+    ' Store macro workbook path
+    macroPath = ThisWorkbook.Path & "\"
+    
+    ' Create dictionaries for categories and product codes
+    Set dictCategory = CreateObject("Scripting.Dictionary")
+    
+    ' Loop through data to categorize product codes
+    For Each cell In ws.Range("A2:A" & lastRow) ' Assuming product codes are in column A
+        productCode = cell.Value
+        category = Left(productCode, 1) ' First letter as category
+        
+        ' Check if category exists in dictionary
+        If Not dictCategory.exists(category) Then
+            dictCategory.Add category, CreateObject("Scripting.Dictionary")
+        End If
+        
+        ' Add product code to corresponding category dictionary
+        If Not dictCategory(category).exists(productCode) Then
+            dictCategory(category).Add productCode, Nothing
+        End If
+    Next cell
+    
+    ' Create workbooks and sheets based on categories and product codes
+    For Each category In dictCategory.keys
+        ' Create new workbook for the category
+        Set wbNew = Workbooks.Add
+        wbNew.SaveAs macroPath & category & ".xlsx"
+        
+        ' Create sheets for each product code
+        For Each productCode In dictCategory(category).keys
+            ' Add new sheet
+            With wbNew.Sheets.Add(After:=wbNew.Sheets(wbNew.Sheets.Count))
+                .Name = productCode
+                
+                ' Copy headers
+                ws.Rows(1).Copy .Rows(1)
+                
+                ' Filter and copy data
+                ws.Range("A1").CurrentRegion.AutoFilter Field:=1, Criteria1:=productCode
+                ws.Rows("2:" & lastRow).Copy .Rows(2)
+                
+                ' Remove filters
+                ws.AutoFilterMode = False
+            End With
+        Next productCode
+        
+        ' Delete default sheet if it exists
+        Application.DisplayAlerts = False
+        If wbNew.Sheets.Count > 1 Then wbNew.Sheets(1).Delete
+        Application.DisplayAlerts = True
+        
+        ' Save and close the new workbook
+        wbNew.Close SaveChanges:=True
+    Next category
+    
+    ' Close the source workbook without saving changes
+    wbSource.Close False
+    
+    ' Re-enable screen updating
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    
+    MsgBox "Category workbooks created successfully!", vbInformation
+End Sub
 
