@@ -1,1 +1,5 @@
-
+Step 1 : Open a new Excel workbook (this will be your Macro Tool Workbook).
+Step 2 : Press ALT + F11 to open the VBA editor.
+Step 3 : Insert a new module and paste the above VBA code.
+Step 4 : Create a button in your Macro Tool Workbook and assign the GenerateCategoryWorkbooks macro to it.
+Step 5 : Click the button, select the sales data file, and let the macro do the rest!
